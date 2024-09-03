@@ -1,0 +1,19 @@
+Register and search for a match with a target
+ws.send(JSON.stringify({
+    type: "notify",
+    data: {
+        name: "akda007",
+        target: "joao"
+    }
+}))
+
+
+ws.send(JSON.stringify(
+{
+    type: "update",
+    data: {
+        name: "akda007",
+        match: "849cebb8-e3eb-42cf-ad47-c77970512ec2",
+        position: 50,
+    }
+}))
