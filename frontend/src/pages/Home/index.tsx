@@ -1,17 +1,55 @@
 import { Button, Stack, TextField } from "@mui/material";
 import { MainContent } from "./styles";
-import { useContext, useEffect } from "react";
+import { useContext, useState } from "react";
 import { GameContext } from "../../providers/GameContext";
+import ConnectingModal from "./components/ConnectingModal";
+import { useNavigate } from "react-router-dom";
 
 export default function Home() {
-    const {username, target} = useContext(GameContext)
+    const {username, setUsername, target, setMatch, setTarget, setWebSocket} = useContext(GameContext)
+    const navigate = useNavigate();
+    const [message, setMessage] = useState("Connecting");
+    const [open, setOpen] = useState(false);
 
-    const handleSubmit = () => {
+    const handleConnect = async () => {
+        setOpen(true);
 
+        const ws = new WebSocket("ws://localhost:8080");
+
+        ws.addEventListener("open", () => {
+            setWebSocket(ws);     
+        })
+
+        ws.addEventListener("message", function connect(msg) {
+            const response = JSON.parse(msg.data);
+            setMessage("Matching")
+
+            switch(response.type) {
+                case "connection":
+                    console.log(response)
+                    setMatch(response.matchId)
+                    ws.removeEventListener("message", connect);
+                    
+                    navigate("/game")
+                    break;
+
+                default:
+                    console.log(response.data)
+                    ws.send(JSON.stringify({
+                        type: "notify",
+                        data: {
+                            name: username,
+                            target: target
+                        }
+                    }))
+            }
+        })
     }
+
 
     return (
         <>
+            <ConnectingModal open={open} message={message}/>
             <MainContent>
                 <Stack 
                 component="form"
@@ -23,9 +61,10 @@ export default function Home() {
                     borderRadius: "20px"
                 }}
                 gap={4}>
-                    <TextField label="Your name" variant="outlined" onChange={() => {}}></TextField>
-                    <TextField label="Oponent name" variant="outlined" onChange={() => {}}></TextField>
-                    <Button variant="outlined" onClick={() => handleSubmit()}>Connect!</Button>
+                    <TextField label="Your name" variant="outlined" onChange={(e) => {setUsername(e.target.value)}}></TextField>
+                    <TextField label="Oponent name" variant="outlined" onChange={(e) => {setTarget(e.target.value)}}></TextField>
+                    
+                    <Button variant="outlined" onClick={handleConnect}>Connect!</Button>
                 </Stack>
             </MainContent>
         </>
