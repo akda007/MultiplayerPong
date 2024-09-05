@@ -1,18 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useContext, useEffect, useRef, useState } from "react";
 import { GameContext } from "../../providers/GameContext"
-import { Button } from "@mui/material";
 
 let instantiated = false;
+let lastTime = Date.now()
+let currentTime = Date.now();
+
+let isCollidingX = false, isCollidingY = false;
 
 type BallData = { x: number, y: number, speed: number, angle: number };
 
 export default function Game() {
-    const {username, target, match, websocket} = useContext(GameContext);
+    const {username,  match, websocket} = useContext(GameContext);
     const canvasRef = useRef<HTMLCanvasElement | null>(null); 
     const [userPosition, setUserPosition] = useState(0);
     const [enemyPosition, setEnemyPosition] = useState(0);
     const [ball, setBall] = useState<BallData | null>(null);
+
+    const height = 600, width = 800;
 
     const drawPaddles = (context: CanvasRenderingContext2D) => {
         const paddleWidth = 10, paddleHeight = 100;
@@ -89,6 +94,7 @@ export default function Game() {
         }
 
         render();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userPosition, enemyPosition, websocket, ball])
 
     const sendBallState = () => {
@@ -105,10 +111,68 @@ export default function Game() {
         }))
     }
 
+    const handleCollision = () => {
+        if (!ball)
+            return;
+
+        const ballRadius = 10;
+        
+        if (ball.y + ballRadius >= height) {
+            if (!isCollidingY) { // Only handle collision once
+                ball.y = height - ballRadius; // Reset position to just inside the bottom wall
+                ball.angle = 360 - ball.angle; // Invert Y direction
+                isCollidingY = true;
+            }
+        } else if (ball.y - ballRadius <= 0) {
+            if (!isCollidingY) {
+                ball.y = ballRadius; // Reset position to just inside the top wall
+                ball.angle = 360 - ball.angle; // Invert Y direction
+                isCollidingY = true;
+            }
+        } else {
+            isCollidingY = false;
+        }
+    
+        // Check if the ball is colliding with left or right walls (X-axis inversion)
+        if (ball.x + ballRadius >= width) {
+            if (!isCollidingX) { // Only handle collision once
+                ball.x = width - ballRadius; // Reset position to just inside the right wall
+                ball.angle = 360 - ball.angle; // Invert X direction
+                isCollidingX = true;
+            }
+        } else if (ball.x - ballRadius <= 0) {
+            if (!isCollidingX) {
+                ball.x = ballRadius; // Reset position to just inside the left wall
+                ball.angle = 360 - ball.angle; // Invert X direction
+                isCollidingX = true;
+            }
+        } else if (isCollidingX) {
+                isCollidingX = false;
+        }
+    }
+
+    const moveBall = (deltaTime: number) => {
+        if (!ball)
+            return;
+
+        const angleRad = ball.angle / (Math.PI * 180);
+
+        ball.x += Math.cos(angleRad) * ball.speed * (deltaTime / 1000);
+        ball.y += Math.sin(angleRad) * ball.speed * (deltaTime / 1000);
+    }
+
     useEffect(() => {
+        lastTime = Date.now();
+
         const interval = setInterval(() => {
-            sendBallState();
-        }, 100);
+            currentTime = Date.now();
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+            moveBall(deltaTime);
+            handleCollision();
+
+            setBall(ball);
+        }, 10);
 
         return () => clearInterval(interval);
     }, [ball, websocket])
@@ -140,8 +204,8 @@ export default function Game() {
             <div style={{height: "100vh", width: "100vw", display: "flex", alignItems: "center", justifyContent: "center"}} >
                 <canvas
                     ref={canvasRef}
-                    width={800}
-                    height={600}
+                    width={width}
+                    height={height}
                     style={{border: "2px solid black"}}
                     onMouseMove={handleMouseMove}
                 ></canvas>
