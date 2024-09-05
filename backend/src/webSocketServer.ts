@@ -31,6 +31,9 @@ wss.on("listening", () => {
                 case "update":
                     handleUpdateEvent(data.data);
                     break;
+                case "get-ball":
+                    handleGetBallEvent(data.data);
+                    break;
                 case "ball":
                     handleBallEvent(data.data);
                     break;
@@ -42,9 +45,24 @@ wss.on("listening", () => {
     })
 })
 
-function handleBallEvent(info: any) {
-    const { matchId, deltaTime, width, height } = info;
+function handleGetBallEvent(info: any) {
+    const {matchId} = info;
 
+    const match = matchManager.getMatch(matchId);
+    
+    if (!match)
+        return
+
+    const ballData = matchManager.getBallData(matchId);
+
+    const json = JSON.stringify({type: "ball", data: ballData});
+
+    match.clientA?.ws.send(json);
+    match.clientB?.ws.send(json);
+}
+
+function handleBallEvent(info: any) {
+    const { matchId, deltaTime, height } = info;
     matchManager.updateBallPosition(matchId, deltaTime, height);
 
     const ballData = matchManager.getBallData(matchId);
@@ -72,12 +90,12 @@ function handleNotifyEvent(ws: WebSocket, info: any) {
     if (!client) return;
 
     const match = matchManager.findOrCreateMatch(client, target);
-    ws.send(JSON.stringify({ matchId: match, type: "connection" }));
+    ws.send(JSON.stringify({ matchId: match.id, type: "connection", ball: match.ball }));
 }
 
 function handleUpdateEvent(info: any) {
     const { name, match, position } = info;
-    const currentMatch = matchManager.getMatch(match.id);
+    const currentMatch = matchManager.getMatch(match);
 
     if (!currentMatch) return;
 

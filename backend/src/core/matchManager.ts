@@ -14,7 +14,7 @@ export class MatchManager {
 
     createMatch(clientA: Client): Match {
         const matchId = uuidv4();
-        const ball = new Ball(400, 300, 200, 45);
+        const ball = new Ball(400, 300, 10, 45);
         const newMatch: Match = { id: matchId, clientA, clientB: undefined, ball};
         this.matches[matchId] = newMatch;
         return newMatch;
