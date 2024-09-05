@@ -2,11 +2,11 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "src/server.ts",
+  "main": "src/webSocketServer.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "npx ts-node src/server.ts",
-    "dev": "npx nodemon src/server.ts"
+    "start": "npx ts-node src/webSocketServer.ts",
+    "dev": "npx nodemon src/webSocketServer.ts"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +24,7 @@
     "ws": "^8.18.0"
   },
   "dependencies": {
-    "@types/uuid": "^10.0.0"
+    "@types/uuid": "^10.0.0",
+    "backend": "file:"
   }
 }
