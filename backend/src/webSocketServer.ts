@@ -62,8 +62,8 @@ function handleGetBallEvent(info: any) {
 }
 
 function handleBallEvent(info: any) {
-    const { matchId, deltaTime, height } = info;
-    matchManager.updateBallPosition(matchId, deltaTime, height);
+    const { matchId, ball } = info;
+    matchManager.updateBallPosition(matchId, ball);
 
     const ballData = matchManager.getBallData(matchId);
 

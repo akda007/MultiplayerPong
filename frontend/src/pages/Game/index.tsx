@@ -6,9 +6,7 @@ let instantiated = false;
 let lastTime = Date.now()
 let currentTime = Date.now();
 
-let isCollidingX = false, isCollidingY = false;
-
-type BallData = { x: number, y: number, speed: number, angle: number };
+type BallData = { x: number, y: number, vx: number, vy: number };
 
 export default function Game() {
     const {username,  match, websocket} = useContext(GameContext);
@@ -18,6 +16,7 @@ export default function Game() {
     const [ball, setBall] = useState<BallData | null>(null);
 
     const height = 600, width = 800;
+    const radius = 10;
 
     const drawPaddles = (context: CanvasRenderingContext2D) => {
         const paddleWidth = 10, paddleHeight = 100;
@@ -35,7 +34,7 @@ export default function Game() {
         if (!ball) return;
 
         context.beginPath();
-        context.arc(ball.x, ball.y, 10, 0, Math.PI * 2);
+        context.arc(ball.x, ball.y, radius, 0, Math.PI * 2);
         context.fillStyle = "#000000";
         context.fill();
         context.closePath();
@@ -57,18 +56,18 @@ export default function Game() {
     drawPaddles(context);
     drawBall(context);
 
+
+
     requestAnimationFrame(render);
    }
 
     const socketController = (data: any) => {
         switch (data.type) {
             case "update":
-                console.log(data);
                 setEnemyPosition(data.position)
                 break;
             
             case "ball":
-                console.log(data)
                 setBall(data.data);
                 break;
         }
@@ -105,77 +104,98 @@ export default function Game() {
             type: "ball",
             data: {
                 matchId: match,
-                deltaTime: 1,
-                heigth: 600
+                ball: ball
             }
         }))
     }
 
-    const handleCollision = () => {
+    const handleCollisionX = () => {
         if (!ball)
             return;
 
-        const ballRadius = 10;
-        
-        if (ball.y + ballRadius >= height) {
-            if (!isCollidingY) { // Only handle collision once
-                ball.y = height - ballRadius; // Reset position to just inside the bottom wall
-                ball.angle = 360 - ball.angle; // Invert Y direction
-                isCollidingY = true;
+        if (ball.x + radius >= width || ball.x - radius <= 0) {
+            ball.vx = -ball.vx;
+        }
+
+    }
+
+    const handleCollisionY = () => {
+        if (!ball)
+            return;
+
+        if (ball.y + radius >= height || ball.y - radius <= 0) {
+            ball.vy = -ball.vy;
+            return true;
+        }
+
+        return false;
+    }
+
+    const handlePaddleCollision = () => {
+        if (!ball)
+            return;
+
+
+        const paddleWidth = 10, paddleHeight = 100;
+
+        const userPaddleX = 10;
+        const userPaddleY = userPosition - paddleHeight / 2;
+
+        const enemyPaddleX = width - 20;
+        const enemyPaddleY = enemyPosition - paddleHeight / 2;
+
+        let collided = false;
+
+        if (ball.x - radius <= userPaddleX + paddleWidth && ball.x + radius >= userPaddleX) {
+            if (ball.y >= userPaddleY && ball.y <= userPaddleY + paddleHeight) {
+                ball.vx = -ball.vx; 
+    
+                const hitPos = (ball.y - userPaddleY) / paddleHeight - 0.5;
+                ball.vy += hitPos * Math.abs(ball.vx);
+                collided = true;
             }
-        } else if (ball.y - ballRadius <= 0) {
-            if (!isCollidingY) {
-                ball.y = ballRadius; // Reset position to just inside the top wall
-                ball.angle = 360 - ball.angle; // Invert Y direction
-                isCollidingY = true;
-            }
-        } else {
-            isCollidingY = false;
         }
     
-        // Check if the ball is colliding with left or right walls (X-axis inversion)
-        if (ball.x + ballRadius >= width) {
-            if (!isCollidingX) { // Only handle collision once
-                ball.x = width - ballRadius; // Reset position to just inside the right wall
-                ball.angle = 360 - ball.angle; // Invert X direction
-                isCollidingX = true;
+        if (ball.x + radius >= enemyPaddleX && ball.x - radius <= enemyPaddleX + paddleWidth) {
+            if (ball.y >= enemyPaddleY && ball.y <= enemyPaddleY + paddleHeight) {
+                ball.vx = -ball.vx;
+    
+                const hitPos = (ball.y - enemyPaddleY) / paddleHeight - 0.5;
+                ball.vy += hitPos * Math.abs(ball.vx);
+                collided = true
             }
-        } else if (ball.x - ballRadius <= 0) {
-            if (!isCollidingX) {
-                ball.x = ballRadius; // Reset position to just inside the left wall
-                ball.angle = 360 - ball.angle; // Invert X direction
-                isCollidingX = true;
-            }
-        } else if (isCollidingX) {
-                isCollidingX = false;
         }
+
+        return collided;
     }
+
 
     const moveBall = (deltaTime: number) => {
         if (!ball)
             return;
 
-        const angleRad = ball.angle / (Math.PI * 180);
-
-        ball.x += Math.cos(angleRad) * ball.speed * (deltaTime / 1000);
-        ball.y += Math.sin(angleRad) * ball.speed * (deltaTime / 1000);
+        ball.x += ball.vx * (deltaTime / 1000);
+        ball.y += ball.vy * (deltaTime / 1000);
     }
 
     useEffect(() => {
-        lastTime = Date.now();
-
         const interval = setInterval(() => {
             currentTime = Date.now();
             const deltaTime = currentTime - lastTime;
             lastTime = currentTime;
+
             moveBall(deltaTime);
-            handleCollision();
+            handleCollisionX();
+
+            if (handlePaddleCollision() || handleCollisionY()) {
+                // sendBallState();
+            };
 
             setBall(ball);
-        }, 10);
+        });
 
         return () => clearInterval(interval);
-    }, [ball, websocket])
+    }, [ball, userPosition, enemyPosition, websocket])
    
     const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
         const canvas = canvasRef.current;

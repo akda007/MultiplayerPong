@@ -14,7 +14,7 @@ export class MatchManager {
 
     createMatch(clientA: Client): Match {
         const matchId = uuidv4();
-        const ball = new Ball(400, 300, 100, 45);
+        const ball = new Ball(400, 300, 100,100);
         const newMatch: Match = { id: matchId, clientA, clientB: undefined, ball};
         this.matches[matchId] = newMatch;
         return newMatch;
@@ -24,17 +24,16 @@ export class MatchManager {
         return this.matches[matchId]
     }
 
-    updateBallPosition(matchId: string, deltaTime: number, heigth: number) {
+    updateBallPosition(matchId: string, ball: Ball) {
         const match = this.getMatch(matchId);
         if (!match) return;
-
-        match.ball.updatePosition(deltaTime);
-        match.ball.checkWallColission(heigth);
+        
+        match.ball = ball;
     }
 
     getBallData(matchId: string) {
         const match = this.getMatch(matchId);
-        return match ? { x: match.ball.x, y: match.ball.y, speed: match.ball.speed, angle: match.ball.angle } : null;
+                    return match ? { x: match.ball.x, y: match.ball.y, vx: match.ball.vx, vy: match.ball.vy} : null;
     }
 
     findOrCreateMatch(client: Client, target: string): Match {
